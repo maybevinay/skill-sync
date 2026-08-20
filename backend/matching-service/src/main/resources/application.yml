@@ -1,0 +1,26 @@
+server:
+  port: 8082
+spring:
+  application:
+    name: matching-service
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/skillsync_matching
+    username: ${POSTGRES_USER:root}
+    password: "${POSTGRES_PASSWORD:Amit@8707}"
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        type:
+          preferred_instant_jdbc_type: TIMESTAMP
+  flyway:
+    enabled: true
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+skillsync:
+  jwt:
+    secret: ${JWT_SECRET:change-me-to-a-256-bit-secret-key-for-hs256-skillsync}
+    issuer: ${JWT_ISSUER:skillsync}

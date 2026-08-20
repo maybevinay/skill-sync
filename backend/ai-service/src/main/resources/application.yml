@@ -1,0 +1,42 @@
+server:
+  port: 8083
+spring:
+  application:
+    name: ai-service
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/skillsync_ai
+    username: ${POSTGRES_USER:root}
+    password: "${POSTGRES_PASSWORD:Amit@8707}"
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        type:
+          preferred_instant_jdbc_type: TIMESTAMP
+  flyway:
+    enabled: true
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      base-url: ${OPENAI_BASE_URL:https://openai.generative-eu.engine.capgemini.com/v1}
+      chat:
+        model: ${OPENAI_MODEL:openai.gpt-5-mini}
+        options:
+          model: ${OPENAI_MODEL:openai.gpt-5-mini}
+      embedding:
+        model: ${OPENAI_EMBEDDING_MODEL:amazon.titan-embed-text-v1}
+        options:
+          model: ${OPENAI_EMBEDDING_MODEL:amazon.titan-embed-text-v1}
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+skillsync:
+  jwt:
+    secret: ${JWT_SECRET:change-me-to-a-256-bit-secret-key-for-hs256-skillsync}
+    issuer: ${JWT_ISSUER:skillsync}

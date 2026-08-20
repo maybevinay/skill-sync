@@ -1,0 +1,40 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:5173"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+      routes:
+        - id: auth
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/auth/**,/api/users/**,/api/admin/users,/api/admin/users/**,/api/admin/stats,/api/admin/audit-logs
+        - id: matching
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/profile/**,/api/skills/**,/api/mentors/**,/api/requests,/api/requests/**,/api/reviews,/api/reviews/**,/api/admin/analytics
+        - id: ai
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/chat,/api/chat/**,/api/rag/**,/api/admin/ai-stats
+skillsync:
+  jwt:
+    secret: ${JWT_SECRET:change-me-to-a-256-bit-secret-key-for-hs256-skillsync}
+    issuer: ${JWT_ISSUER:skillsync}
+  rate-limit:
+    requests-per-minute: 120
