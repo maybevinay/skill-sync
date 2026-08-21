@@ -25,6 +25,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -39,6 +41,20 @@ class RequestReviewServiceTest {
     @BeforeEach
     void setUp() {
         service = new RequestReviewService(requests, mentors, reviews, profileService);
+    }
+
+    @Test
+    void duplicateOpenRequestIsRejected() {
+        Profile learner = profile(3L, "Uma User");
+        MentorProfile mentor = mentor(1L, profile(2L, "Maya Mentor"));
+        when(profileService.require(3L)).thenReturn(learner);
+        when(mentors.findById(1L)).thenReturn(Optional.of(mentor));
+        when(requests.existsByLearnerUserIdAndMentorIdAndStatusIn(eq(3L), eq(1L), any())).thenReturn(true);
+
+        ApiException ex = assertThrows(ApiException.class, () ->
+                service.create(new AuthPrincipal(3L, "user@skillsync.dev", "USER", "Uma"),
+                        new RequestCreate("Again please", 1L)));
+        assertEquals(HttpStatus.CONFLICT, ex.getStatus());
     }
 
     @Test
@@ -96,6 +112,25 @@ class RequestReviewServiceTest {
                 service.addReview(new AuthPrincipal(3L, "user@skillsync.dev", "USER", "Uma"),
                         new ReviewCreate(10L, 5, "Great mentor")));
         assertEquals(HttpStatus.CONFLICT, ex.getStatus());
+    }
+
+    @Test
+    void pendingRequestCannotBeReviewed() {
+        MatchRequest req = pendingRequest();
+        when(requests.findById(10L)).thenReturn(Optional.of(req));
+
+        ApiException ex = assertThrows(ApiException.class, () ->
+                service.addReview(new AuthPrincipal(3L, "user@skillsync.dev", "USER", "Uma"),
+                        new ReviewCreate(10L, 5, "Great mentor")));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
+    }
+
+    @Test
+    void missingRequestIsRejected() {
+        ApiException ex = assertThrows(ApiException.class, () ->
+                service.addReview(new AuthPrincipal(3L, "user@skillsync.dev", "USER", "Uma"),
+                        new ReviewCreate(0L, 5, "Great mentor")));
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatus());
     }
 
     @Test

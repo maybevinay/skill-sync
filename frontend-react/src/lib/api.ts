@@ -1,7 +1,8 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
+import { authStore } from "@/lib/auth";
 
 export function serviceBase(path: string): string {
-  if (path.includes("/api/chat") || path.includes("/api/rag") || path.includes("/api/admin/ai-stats")) {
+  if (path.includes("/api/chat") || path.includes("/api/rag") || path.includes("/api/documents") || path.includes("/api/admin/ai-stats")) {
     return "http://localhost:8083";
   }
   if (
@@ -56,7 +57,7 @@ api.interceptors.response.use(
           original.headers.Authorization = `Bearer ${data.accessToken}`;
           return api(original);
         } catch {
-          localStorage.clear();
+          authStore.clear();
           window.location.href = "/login";
         }
       }
@@ -76,7 +77,11 @@ export function apiErrorMessage(error: unknown, fallback: string) {
   if (server) return server;
   if (status === 401) return "Invalid credentials";
   if (!err.response) {
-    return "Cannot reach auth-service. Confirm it is running on http://localhost:8081.";
+    return fallback === "Invalid credentials"
+      ? "Cannot reach auth-service. Confirm it is running on http://localhost:8081."
+      : /document|RAG|assistant|process/i.test(fallback)
+        ? `${fallback} Confirm ai-service is running on http://localhost:8083.`
+        : `${fallback} Confirm matching-service is running on http://localhost:8082.`;
   }
   return fallback;
 }

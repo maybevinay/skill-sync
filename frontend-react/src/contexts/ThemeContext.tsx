@@ -5,7 +5,7 @@ type Theme = "dark" | "light";
 const ThemeContext = createContext<{ theme: Theme; toggle: () => void } | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("ss_theme") as Theme) || "dark");
+  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem("ss_theme") as Theme) || "light");
 
   useEffect(() => {
     document.documentElement.classList.remove("dark", "light");

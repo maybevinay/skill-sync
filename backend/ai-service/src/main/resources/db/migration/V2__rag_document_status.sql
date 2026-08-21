@@ -1,0 +1,4 @@
+ALTER TABLE rag_documents ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'PROCESSED';
+ALTER TABLE rag_documents ADD COLUMN chunk_count INT NOT NULL DEFAULT 0;
+ALTER TABLE rag_documents ADD COLUMN error_message TEXT;
+ALTER TABLE rag_documents ADD COLUMN processed_at TIMESTAMP;

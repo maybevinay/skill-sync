@@ -3,6 +3,7 @@ package com.skillsync.ai.service;
 import com.skillsync.ai.domain.AiUsage;
 import com.skillsync.ai.domain.ChatMessage;
 import com.skillsync.ai.domain.ChatSession;
+import com.skillsync.ai.rag.AiPrompts;
 import com.skillsync.ai.repository.AiUsageRepository;
 import com.skillsync.ai.repository.ChatMessageRepository;
 import com.skillsync.ai.repository.ChatSessionRepository;
@@ -16,10 +17,8 @@ import java.util.Map;
 
 @Service
 public class ChatService {
-    private static final String SYSTEM = """
-            You are SkillSync, an AI mentor for engineers. Be concise, practical, and cite matching/learning strategy when relevant.
-            Help with skills, career, and how to work with mentors.
-            """;
+    private static final int MAX_HISTORY = 12;
+    private static final int MAX_MESSAGE = 8000;
 
     private final ChatSessionRepository sessions;
     private final ChatMessageRepository messages;
@@ -59,10 +58,18 @@ public class ChatService {
 
     @Transactional
     public Map<String, Object> chat(Long userId, Long sessionId, String userText, boolean regenerate) {
-        if (!regenerate && (userText == null || userText.isBlank())) {
+        return complete(userId, sessionId, userText, userText, AiPrompts.CHAT_SYSTEM, regenerate);
+    }
+
+    @Transactional
+    public Map<String, Object> complete(Long userId, Long sessionId, String persistUserText, String llmUserText,
+                                        String system, boolean regenerate) {
+        if (!regenerate && (persistUserText == null || persistUserText.isBlank())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message is required");
         }
-        ChatSession session = resolveSession(userId, sessionId, userText);
+        persistUserText = clip(persistUserText);
+        llmUserText = clip(llmUserText);
+        ChatSession session = resolveSession(userId, sessionId, persistUserText);
         if (regenerate && !session.getMessages().isEmpty()) {
             ChatMessage last = session.getMessages().get(session.getMessages().size() - 1);
             if ("assistant".equals(last.getRole())) {
@@ -71,23 +78,48 @@ public class ChatService {
             }
             if (!session.getMessages().isEmpty()) {
                 ChatMessage prevUser = session.getMessages().get(session.getMessages().size() - 1);
-                userText = prevUser.getContent();
+                persistUserText = prevUser.getContent();
+                llmUserText = persistUserText;
             }
         } else {
-            add(session, "user", userText);
+            add(session, "user", persistUserText);
         }
         List<String[]> history = session.getMessages().stream()
                 .map(m -> new String[]{m.getRole(), m.getContent()})
                 .toList();
-        String reply = llm.complete(SYSTEM, history.stream().limit(Math.max(0, history.size() - 1)).toList(), userText);
+        int endExclusive = Math.max(0, history.size() - 1);
+        int start = Math.max(0, endExclusive - MAX_HISTORY);
+        List<String[]> window = history.subList(start, endExclusive);
+        String reply = llm.complete(system, window, llmUserText);
         add(session, "assistant", reply);
-        track(userId, "chat", userText.length() + reply.length());
+        track(userId, "chat", persistUserText.length() + reply.length());
         return Map.of("sessionId", session.getId(), "content", reply, "role", "assistant");
     }
 
+    @Transactional
+    public Map<String, Object> appendTurn(Long userId, Long sessionId, String userText, String assistantText) {
+        if (userText == null || userText.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message is required");
+        }
+        userText = clip(userText);
+        ChatSession session = resolveSession(userId, sessionId, userText);
+        add(session, "user", userText);
+        add(session, "assistant", assistantText);
+        track(userId, "chat", userText.length() + assistantText.length());
+        return Map.of("sessionId", session.getId(), "content", assistantText, "role", "assistant");
+    }
+
+    @Transactional
     public String completeOnly(Long userId, Long sessionId, String userText) {
         Map<String, Object> result = chat(userId, sessionId, userText, false);
         return String.valueOf(result.get("content"));
+    }
+
+    private static String clip(String text) {
+        if (text == null) {
+            return null;
+        }
+        return text.length() <= MAX_MESSAGE ? text : text.substring(0, MAX_MESSAGE);
     }
 
     private ChatSession resolveSession(Long userId, Long sessionId, String userText) {
@@ -96,7 +128,8 @@ public class ChatService {
         }
         ChatSession session = new ChatSession();
         session.setUserId(userId);
-        session.setTitle(userText.length() > 48 ? userText.substring(0, 48) + "…" : userText);
+        String title = userText == null ? "Chat" : userText;
+        session.setTitle(title.length() > 48 ? title.substring(0, 48) + "…" : title);
         return sessions.save(session);
     }
 

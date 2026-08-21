@@ -5,9 +5,9 @@ spring:
   application:
     name: auth-service
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/skillsync_auth
-    username: ${POSTGRES_USER:root}
-    password: "${POSTGRES_PASSWORD:Amit@8707}"
+    url: ${DB_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/skillsync_auth}
+    username: ${DB_USERNAME:${POSTGRES_USER:root}}
+    password: ${DB_PASSWORD:${POSTGRES_PASSWORD:Amit@8707}}
   jpa:
     hibernate:
       ddl-auto: validate

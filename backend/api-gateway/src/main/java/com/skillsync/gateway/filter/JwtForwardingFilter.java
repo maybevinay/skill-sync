@@ -43,7 +43,10 @@ public class JwtForwardingFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
         String path = exchange.getRequest().getURI().getPath();
-        if (PUBLIC.stream().anyMatch(path::equals) || path.startsWith("/actuator")) {
+        if (PUBLIC.stream().anyMatch(path::equals)
+                || path.equals("/")
+                || path.equals("/favicon.ico")
+                || path.startsWith("/actuator")) {
             return chain.filter(exchange);
         }
         String header = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);

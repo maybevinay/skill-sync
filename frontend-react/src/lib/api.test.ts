@@ -21,6 +21,7 @@ describe("serviceBase", () => {
     expect(serviceBase("/api/chat")).toBe("http://localhost:8083");
     expect(serviceBase("/api/chat/stream")).toBe("http://localhost:8083");
     expect(serviceBase("/api/rag/documents")).toBe("http://localhost:8083");
+    expect(serviceBase("/api/documents/upload")).toBe("http://localhost:8083");
     expect(serviceBase("/api/admin/ai-stats")).toBe("http://localhost:8083");
   });
 });
@@ -42,6 +43,14 @@ describe("apiErrorMessage", () => {
   });
 
   it("explains unreachable auth-service instead of false invalid credentials", () => {
-    expect(apiErrorMessage({}, "fallback")).toContain("8081");
+    expect(apiErrorMessage({}, "Invalid credentials")).toContain("8081");
+  });
+
+  it("explains unreachable matching-service for review fallbacks", () => {
+    expect(apiErrorMessage({}, "Could not submit review.")).toContain("8082");
+  });
+
+  it("explains unreachable ai-service for document processing", () => {
+    expect(apiErrorMessage({}, "Document processing failed.")).toContain("8083");
   });
 });

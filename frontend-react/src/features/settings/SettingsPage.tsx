@@ -1,34 +1,46 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/shared/PageHeader";
+import { Avatar } from "@/lib/ui";
 
 export function SettingsPage() {
   const { user } = useAuth();
   const { theme, toggle } = useTheme();
   return (
-    <div className="max-w-xl space-y-4">
-      <PageHeader title="Settings" subtitle="Account, role, and appearance" />
-      <Card className="space-y-3 text-sm">
-        <div className="flex justify-between gap-3">
-          <span className="text-muted">Email</span>
-          <span className="font-medium">{user?.email}</span>
+    <div className="max-w-xl space-y-8">
+      <PageHeader title="Settings" subtitle="Account, role, and appearance." />
+      <section className="flex items-center gap-4">
+        <Avatar name={user?.fullName} className="h-14 w-14 text-sm" />
+        <div>
+          <div className="font-semibold">{user?.fullName}</div>
+          <div className="text-sm text-muted">{user?.email}</div>
+        </div>
+      </section>
+      <dl className="space-y-4 text-sm">
+        <div className="flex justify-between gap-3 border-b border-line pb-4">
+          <dt className="text-muted">Role</dt>
+          <dd>
+            <Badge tone="primary">{user?.role ?? "USER"}</Badge>
+          </dd>
+        </div>
+        <div className="flex justify-between gap-3 border-b border-line pb-4">
+          <dt className="text-muted">Verified</dt>
+          <dd>
+            <Badge tone={user?.emailVerified ? "success" : "warning"}>{user?.emailVerified ? "Yes" : "Pending"}</Badge>
+          </dd>
         </div>
         <div className="flex justify-between gap-3">
-          <span className="text-muted">Role</span>
-          <Badge tone="primary">{user?.role ?? "USER"}</Badge>
+          <dt className="text-muted">Appearance</dt>
+          <dd>
+            <Button variant="outline" size="sm" onClick={toggle}>
+              Switch to {theme === "dark" ? "light" : "dark"}
+            </Button>
+          </dd>
         </div>
-        <div className="flex justify-between gap-3">
-          <span className="text-muted">Verified</span>
-          <Badge tone={user?.emailVerified ? "success" : "warning"}>{user?.emailVerified ? "Yes" : "Pending"}</Badge>
-        </div>
-        <p className="text-muted">JWT access tokens expire in 15 minutes and refresh automatically.</p>
-        <Button variant="outline" onClick={toggle}>
-          Switch to {theme === "dark" ? "light" : "dark"} mode
-        </Button>
-      </Card>
+      </dl>
+      <p className="text-sm text-muted">JWT access tokens expire in 15 minutes and refresh automatically.</p>
     </div>
   );
 }

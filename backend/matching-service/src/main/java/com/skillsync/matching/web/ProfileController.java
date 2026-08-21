@@ -8,7 +8,6 @@ import com.skillsync.matching.service.ProfileService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -22,7 +21,6 @@ public class ProfileController {
     }
 
     @GetMapping("/me")
-    @Transactional(readOnly = true)
     public ProfileResponse me(@AuthenticationPrincipal AuthPrincipal principal) {
         return profileService.me(principal);
     }

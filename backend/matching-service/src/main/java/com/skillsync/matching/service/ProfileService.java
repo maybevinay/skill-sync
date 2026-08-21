@@ -1,5 +1,7 @@
 package com.skillsync.matching.service;
 
+import com.skillsync.matching.config.DemoProfiles;
+import com.skillsync.matching.domain.Availability;
 import com.skillsync.matching.domain.Profile;
 import com.skillsync.matching.domain.ProfileSkill;
 import com.skillsync.matching.domain.Skill;
@@ -18,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ProfileService {
@@ -39,7 +42,7 @@ public class ProfileService {
         profile.setPhotoUrl(request.photoUrl());
         profile.setBio(request.bio());
         profile.setLearningGoals(request.learningGoals());
-        profile.setExperienceYears(request.experienceYears());
+        profile.setExperienceYears(Math.max(0, Math.min(80, request.experienceYears())));
         if (request.availability() != null) {
             profile.setAvailability(request.availability());
         }
@@ -50,11 +53,46 @@ public class ProfileService {
         return toResponse(profiles.save(profile));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public ProfileResponse me(AuthPrincipal principal) {
-        Profile profile = profiles.findByUserId(principal.userId())
-                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Complete your profile first"));
-        return toResponse(profile);
+        Optional<Profile> existing = profiles.findByUserId(principal.userId());
+        if (existing.isEmpty()) {
+            return createBlank(principal);
+        }
+        Profile profile = existing.get();
+        Long reserved = DemoProfiles.reservedUserId(profile.getFullName());
+        if (reserved == null || reserved.equals(profile.getUserId())) {
+            return toResponse(profile);
+        }
+        if (profiles.findByUserId(reserved).isEmpty()) {
+            profile.setUserId(reserved);
+            profiles.save(profile);
+            return createBlank(principal);
+        }
+        applyBlank(profile, principal);
+        return toResponse(profiles.save(profile));
+    }
+
+    private ProfileResponse createBlank(AuthPrincipal principal) {
+        Profile profile = new Profile();
+        applyBlank(profile, principal);
+        return toResponse(profiles.save(profile));
+    }
+
+    private void applyBlank(Profile profile, AuthPrincipal principal) {
+        profile.setUserId(principal.userId());
+        String name = principal.name();
+        profile.setFullName(name == null || name.isBlank() ? "New member" : name.trim());
+        profile.setPhotoUrl(null);
+        profile.setBio(null);
+        profile.setLearningGoals(null);
+        profile.setExperienceYears(0);
+        profile.setAvailability(Availability.WEEKNIGHTS);
+        profile.setCountry(null);
+        profile.setLinkedinUrl(null);
+        profile.setGithubUrl(null);
+        profile.setPortfolioUrl(null);
+        profile.getSkills().clear();
     }
 
     public Profile require(Long userId) {

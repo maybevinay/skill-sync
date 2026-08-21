@@ -8,12 +8,12 @@ spring:
       max-file-size: 15MB
       max-request-size: 15MB
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/skillsync_ai
-    username: ${POSTGRES_USER:root}
-    password: "${POSTGRES_PASSWORD:Amit@8707}"
+    url: ${DB_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/skillsync_ai}
+    username: ${DB_USERNAME:${POSTGRES_USER:root}}
+    password: ${DB_PASSWORD:${POSTGRES_PASSWORD:Amit@8707}}
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     open-in-view: false
     properties:
       hibernate:
@@ -23,16 +23,17 @@ spring:
     enabled: true
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY:}
+      api-key: ${OPENAI_API_KEY:eLf4KelINn2YIlzownfWaa38O0YhVBUq2DGTGLV8}
       base-url: ${OPENAI_BASE_URL:https://openai.generative-eu.engine.capgemini.com/v1}
       chat:
-        model: ${OPENAI_MODEL:openai.gpt-5-mini}
         options:
           model: ${OPENAI_MODEL:openai.gpt-5-mini}
+        # Spring AI appends /v1 by default; Capgemini base-url already includes /v1.
+        completions-path: /chat/completions
       embedding:
-        model: ${OPENAI_EMBEDDING_MODEL:amazon.titan-embed-text-v1}
         options:
           model: ${OPENAI_EMBEDDING_MODEL:amazon.titan-embed-text-v1}
+        embeddings-path: /embeddings
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
@@ -40,3 +41,25 @@ skillsync:
   jwt:
     secret: ${JWT_SECRET:change-me-to-a-256-bit-secret-key-for-hs256-skillsync}
     issuer: ${JWT_ISSUER:skillsync}
+  rag:
+    embedding-dimensions: 1536
+    chunk-size: 800
+    chunk-overlap: 120
+    top-k: 5
+    min-similarity: 0.28
+    max-chunks-per-document: 200
+    max-query-chars: 4000
+    max-history-messages: 12
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-3.6-flash}
+    embedding-model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "!test"
+    import:
+      - optional:dotenv:.env
+      - optional:dotenv:../../.env

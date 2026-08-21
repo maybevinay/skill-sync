@@ -1,58 +1,77 @@
 import { useQuery } from "@tanstack/react-query";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bot, GitCompare, UserCheck, Users } from "lucide-react";
 import api from "@/lib/api";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/shared/Skeleton";
+import { useTheme } from "@/hooks/useTheme";
+import { chartTheme } from "@/lib/chartTheme";
 import { PageHeader } from "@/shared/PageHeader";
+import { Skeleton } from "@/shared/Skeleton";
+import { StatCard } from "@/shared/StatCard";
+import { ErrorState } from "@/shared/ErrorState";
 
 export function AdminDashboard() {
+  const { theme } = useTheme();
+  const ink = chartTheme(theme === "dark");
   const auth = useQuery({ queryKey: ["admin-stats"], queryFn: async () => (await api.get("/api/admin/stats")).data });
   const matching = useQuery({ queryKey: ["admin-analytics"], queryFn: async () => (await api.get("/api/admin/analytics")).data });
   const ai = useQuery({ queryKey: ["ai-stats"], queryFn: async () => (await api.get("/api/admin/ai-stats")).data });
   const growth = matching.data?.growth ?? [];
+  const failed = auth.isError || matching.isError || ai.isError;
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Admin dashboard" subtitle="Users, mentors, matching volume, and AI usage" />
-      {auth.isLoading ? (
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-          <Skeleton />
-          <Skeleton />
-          <Skeleton />
-          <Skeleton />
+    <div className="space-y-8">
+      <PageHeader title="Overview" subtitle="Users, mentors, matching volume, and AI usage from live services." />
+      {failed ? (
+        <ErrorState
+          hint="We couldn't load admin metrics. Confirm the gateway and services are running."
+          onRetry={() => {
+            void auth.refetch();
+            void matching.refetch();
+            void ai.refetch();
+          }}
+        />
+      ) : auth.isLoading || matching.isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
+          <Skeleton className="h-32" />
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-          <Stat label="Users" value={auth.data?.users} />
-          <Stat label="Mentors" value={auth.data?.mentors} />
-          <Stat label="Profiles" value={matching.data?.profiles} />
-          <Stat label="AI chats" value={ai.data?.chatCalls} />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Users" value={auth.data?.users ?? "—"} icon={<Users className="h-4 w-4 text-primary" />} className="bg-lavender/50" />
+          <StatCard label="Mentors" value={auth.data?.mentors ?? "—"} icon={<UserCheck className="h-4 w-4 text-primary" />} className="bg-soft-blue/70" />
+          <StatCard
+            label="Pending requests"
+            value={matching.data?.pendingRequests ?? "—"}
+            hint={`${matching.data?.acceptedRequests ?? 0} accepted`}
+            icon={<GitCompare className="h-4 w-4 text-primary" />}
+          />
+          <StatCard label="AI chats" value={ai.data?.chatCalls ?? "—"} icon={<Bot className="h-4 w-4 text-primary" />} className="bg-mint/60" />
         </div>
       )}
-      <Card className="h-80 min-w-0">
-        <div className="mb-2 text-sm text-muted">Platform growth</div>
-        <div className="h-[calc(100%-1.5rem)] min-h-0 min-w-0">
+      <section>
+        <h2 className="mb-4 text-[17px] font-semibold">Platform growth</h2>
+        <div className="h-80 min-w-0 rounded-ss border border-line bg-surface p-4">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={growth}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-              <XAxis dataKey="month" stroke="#94a3b8" />
-              <YAxis stroke="#94a3b8" />
-              <Tooltip />
-              <Area dataKey="users" stroke="#4F46E5" fill="#4F46E5" fillOpacity={0.3} />
-              <Area dataKey="mentors" stroke="#0891B2" fill="#0891B2" fillOpacity={0.3} />
+              <CartesianGrid strokeDasharray="3 3" stroke={ink.grid} />
+              <XAxis dataKey="month" stroke={ink.axis} fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke={ink.axis} fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{
+                  background: "rgb(var(--ss-surface))",
+                  border: "1px solid rgb(var(--ss-border))",
+                  borderRadius: 12,
+                  fontSize: 13,
+                }}
+              />
+              <Area dataKey="users" stroke={ink.primary} fill={ink.primary} fillOpacity={0.12} strokeWidth={2} />
+              <Area dataKey="mentors" stroke={ink.secondary} fill={ink.secondary} fillOpacity={0.1} strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      </Card>
+      </section>
     </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number | undefined }) {
-  return (
-    <Card>
-      <div className="text-sm text-muted">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tracking-tight">{value ?? "—"}</div>
-    </Card>
   );
 }

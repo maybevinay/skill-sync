@@ -9,6 +9,7 @@ import com.skillsync.auth.dto.RegisterRequest;
 import com.skillsync.auth.dto.ResetPasswordRequest;
 import com.skillsync.auth.dto.UserResponse;
 import com.skillsync.auth.dto.VerifyEmailRequest;
+import com.skillsync.auth.exception.ApiException;
 import com.skillsync.auth.mapper.UserMapper;
 import com.skillsync.auth.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,6 +51,9 @@ public class AuthController {
 
     @PostMapping("/logout")
     public void logout(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            return;
+        }
         authService.logout(user);
     }
 
@@ -70,6 +74,9 @@ public class AuthController {
 
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
         return userMapper.toResponse(user);
     }
 }

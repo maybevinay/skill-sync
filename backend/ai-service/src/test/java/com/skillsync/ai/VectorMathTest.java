@@ -37,4 +37,13 @@ class VectorMathTest {
         double[] v = VectorMath.fallbackEmbed("", 64);
         assertEquals(64, v.length);
     }
+
+    @Test
+    void relatedPhrasesHaveHigherCosineThanUnrelated() {
+        double[] a = VectorMath.fallbackEmbed("skill overlap matching weight", 1536);
+        double[] b = VectorMath.fallbackEmbed("what weight is used for skill overlap", 1536);
+        double[] c = VectorMath.fallbackEmbed("martian currency and ocean temperature", 1536);
+        assertTrue(VectorMath.cosine(a, b) > VectorMath.cosine(a, c));
+        assertTrue(VectorMath.cosine(a, b) > 0.28);
+    }
 }

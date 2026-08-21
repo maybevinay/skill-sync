@@ -1,6 +1,7 @@
-import { Route, Routes } from "react-router-dom";
+import { Link, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { RequireAuth } from "./RequireAuth";
 import { AppShell } from "./AppShell";
+import { useAuth } from "@/hooks/useAuth";
 import { LandingPage } from "@/features/landing/LandingPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RegisterPage } from "@/features/auth/RegisterPage";
@@ -24,12 +25,34 @@ import { MentorManagement } from "@/features/admin/MentorManagement";
 import { AnalyticsPage } from "@/features/admin/AnalyticsPage";
 import { ReportsPage } from "@/features/admin/ReportsPage";
 
+function GuestOnly() {
+  const { user } = useAuth();
+  if (user) {
+    return <Navigate to={user.role === "ADMIN" ? "/admin" : "/app"} replace />;
+  }
+  return <Outlet />;
+}
+
+function NotFound() {
+  return (
+    <div className="mx-auto max-w-lg px-6 py-16">
+      <h1 className="text-xl font-semibold">Page not found</h1>
+      <p className="mt-2 text-sm text-muted">That URL is not part of SkillSync.</p>
+      <Link className="mt-4 inline-block text-sm font-medium text-primary hover:underline" to="/">
+        Back to home
+      </Link>
+    </div>
+  );
+}
+
 export function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      <Route element={<GuestOnly />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Route>
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -45,6 +68,7 @@ export function App() {
           <Route path="ai" element={<AiAssistantPage />} />
           <Route path="rag" element={<RagAssistantPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Route>
       <Route element={<RequireAuth roles={["ADMIN"]} />}>
@@ -54,8 +78,10 @@ export function App() {
           <Route path="mentors" element={<MentorManagement />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="reports" element={<ReportsPage />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Route>
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

@@ -18,6 +18,18 @@ class JwtForwardingFilterTest {
             "change-me-to-a-256-bit-secret-key-for-hs256-skillsync", "skillsync");
 
     @Test
+    void rootIsPublic() {
+        var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/").build());
+        AtomicBoolean forwarded = new AtomicBoolean(false);
+        filter.filter(exchange, ex -> {
+            forwarded.set(true);
+            return Mono.empty();
+        }).block();
+        assertTrue(forwarded.get());
+        assertNull(exchange.getResponse().getStatusCode());
+    }
+
+    @Test
     void loginIsPublic() {
         var exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/auth/login").build());
         AtomicBoolean forwarded = new AtomicBoolean(false);

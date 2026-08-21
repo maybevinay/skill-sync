@@ -45,6 +45,12 @@ public class RequestReviewService {
         if (mentor.getProfile().getUserId().equals(principal.userId())) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "You cannot request mentorship from yourself");
         }
+        if (requests.existsByLearnerUserIdAndMentorIdAndStatusIn(
+                principal.userId(),
+                mentor.getId(),
+                List.of(RequestStatus.PENDING, RequestStatus.ACCEPTED))) {
+            throw new ApiException(HttpStatus.CONFLICT, "You already have an open request with this mentor");
+        }
         MatchRequest req = new MatchRequest();
         req.setLearner(learner);
         req.setMentor(mentor);
@@ -87,6 +93,9 @@ public class RequestReviewService {
 
     @Transactional
     public ReviewView addReview(AuthPrincipal principal, ReviewCreate body) {
+        if (body.requestId() == null || body.requestId() < 1) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Select a mentorship request");
+        }
         if (body.rating() < 1 || body.rating() > 5) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Rating must be 1-5");
         }
@@ -130,12 +139,12 @@ public class RequestReviewService {
 
     private RequestView toView(MatchRequest r) {
         return new RequestView(r.getId(), r.getLearner().getId(), r.getMentor().getId(),
-                r.getLearner().getFullName(), r.getMentor().getProfile().getFullName(),
+                r.getLearner().getUserId(), r.getLearner().getFullName(), r.getMentor().getProfile().getFullName(),
                 r.getMessage(), r.getStatus().name(), r.getCreatedAt());
     }
 
     private ReviewView toView(Review r) {
-        return new ReviewView(r.getId(), r.getMentor().getId(), r.getReviewer().getFullName(),
+        return new ReviewView(r.getId(), r.getRequest().getId(), r.getMentor().getId(), r.getReviewer().getFullName(),
                 r.getRating(), r.getComment(), r.getCreatedAt());
     }
 }

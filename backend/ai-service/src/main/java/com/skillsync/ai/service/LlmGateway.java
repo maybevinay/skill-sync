@@ -1,5 +1,7 @@
 package com.skillsync.ai.service;
 
+import com.skillsync.ai.exception.GeminiApiException;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -8,7 +10,6 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
@@ -18,15 +19,32 @@ import java.util.List;
 @Service
 public class LlmGateway {
     private static final Logger log = LoggerFactory.getLogger(LlmGateway.class);
-    private final ChatModel chatModel;
-    private final EmbeddingModel embeddingModel;
+    private final ObjectProvider<ChatModel> chatModels;
+    private final GeminiService gemini;
+    private final EmbeddingService embeddings;
 
-    public LlmGateway(ObjectProvider<ChatModel> chatModel, ObjectProvider<EmbeddingModel> embeddingModel) {
-        this.chatModel = chatModel.getIfAvailable();
-        this.embeddingModel = embeddingModel.getIfAvailable();
+    public LlmGateway(ObjectProvider<ChatModel> chatModels, GeminiService gemini, EmbeddingService embeddings) {
+        this.chatModels = chatModels;
+        this.gemini = gemini;
+        this.embeddings = embeddings;
+    }
+
+    @PostConstruct
+    void logModelStatus() {
+        if (gemini.isAvailable()) {
+            log.info("LLM provider: Gemini");
+        } else if (chatModels.getIfAvailable() != null) {
+            log.info("LLM provider: OpenAI-compatible ChatModel");
+        } else {
+            log.warn("No LLM provider — chat uses local fallback. Set GEMINI_API_KEY or OPENAI_API_KEY.");
+        }
     }
 
     public String complete(String system, List<String[]> turns, String userMessage) {
+        if (gemini.isAvailable()) {
+            return gemini.generate(system, turns, userMessage);
+        }
+        ChatModel chatModel = chatModels.getIfAvailable();
         if (chatModel == null) {
             return fallback(userMessage);
         }
@@ -51,19 +69,11 @@ public class LlmGateway {
     }
 
     public double[] embed(String text) {
-        if (embeddingModel != null) {
-            try {
-                float[] raw = embeddingModel.embed(text);
-                double[] out = new double[raw.length];
-                for (int i = 0; i < raw.length; i++) {
-                    out[i] = raw[i];
-                }
-                return out;
-            } catch (Exception ex) {
-                log.warn("Embedding API failed, using local vectors: {}", ex.getMessage());
-            }
-        }
-        return com.skillsync.ai.rag.VectorMath.fallbackEmbed(text, 64);
+        return embeddings.embed(text);
+    }
+
+    public double[] embedQuery(String text) {
+        return embeddings.embed(text, true);
     }
 
     private String fallback(String userMessage) {

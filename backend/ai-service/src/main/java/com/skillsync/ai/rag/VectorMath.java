@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Locale;
 
 public final class VectorMath {
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -29,11 +30,24 @@ public final class VectorMath {
     }
 
     public static String toJson(double[] vector) {
-        try {
-            return MAPPER.writeValueAsString(vector);
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
+        return toPgLiteral(vector);
+    }
+
+    /** pgvector text input: [0.1,0.2,...] */
+    public static String toPgLiteral(double[] vector) {
+        if (vector == null) {
+            return "[]";
         }
+        StringBuilder sb = new StringBuilder(vector.length * 12);
+        sb.append('[');
+        for (int i = 0; i < vector.length; i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            double n = Double.isFinite(vector[i]) ? vector[i] : 0.0;
+            sb.append(String.format(Locale.US, "%.8f", n));
+        }
+        return sb.append(']').toString();
     }
 
     public static double[] fromJson(String json) {
@@ -54,16 +68,24 @@ public final class VectorMath {
         if (text == null || text.isEmpty() || dims <= 0) {
             return v;
         }
-        int h = text.toLowerCase().hashCode();
-        for (int i = 0; i < dims; i++) {
-            h = 31 * h + text.charAt(i % text.length());
-            v[i] = ((h % 1000) / 1000.0) - 0.5;
+        String[] tokens = text.toLowerCase(Locale.ROOT).split("[^a-z0-9]+");
+        for (String token : tokens) {
+            if (token.isEmpty()) {
+                continue;
+            }
+            int h = token.hashCode();
+            v[Math.floorMod(h, dims)] += 1.0;
+            v[Math.floorMod(h * 31, dims)] += 0.5;
         }
         double norm = 0;
-        for (double n : v) norm += n * n;
+        for (double n : v) {
+            norm += n * n;
+        }
         norm = Math.sqrt(norm);
         if (norm > 0) {
-            for (int i = 0; i < dims; i++) v[i] /= norm;
+            for (int i = 0; i < dims; i++) {
+                v[i] /= norm;
+            }
         }
         return v;
     }

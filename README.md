@@ -10,6 +10,9 @@ Enterprise-grade SaaS monorepo: React 19 frontend, Spring Boot 3 microservices (
 
 ```
 skillsync/
+  start.cmd           Double-click to run auth, matching, AI, gateway, UI
+  stop.cmd            Stop listeners on 5173 and 8080–8083
+  scripts/            start.ps1, stop.ps1, qa-api.mjs
   frontend-react/     Vite + React 19 + TypeScript + Tailwind + ShadCN
   backend/
     api-gateway/      Spring Cloud Gateway · JWT · CORS · rate limit
@@ -17,19 +20,23 @@ skillsync/
     matching-service/ Profiles, skills, matching engine, requests, reviews
     ai-service/       Chat, memory, RAG, embeddings in PostgreSQL
   database/           Schema bootstrap + seeds
-  docs/               Setup, OpenAPI notes, Postman
+  docs/               Setup, OpenAPI notes, Postman, case-study pack
 ```
 
 ## Quick start
 
-See [docs/SETUP.md](docs/SETUP.md).
+See [docs/SETUP.md](docs/SETUP.md). Case-study documentation: [docs/case-study/00-INDEX.md](docs/case-study/00-INDEX.md).
 
-```bash
-# Create PostgreSQL databases skillsync_auth, skillsync_matching, skillsync_ai
-# (user root on localhost:5432). See docs/SETUP.md.
-# start the four Spring Boot apps, then:
-cd frontend-react && npm install && npm run dev
+PostgreSQL must already be running on `localhost:5432`. Then start everything:
+
+```powershell
+# double-click start.cmd, or:
+powershell -ExecutionPolicy Bypass -File scripts/start.ps1
 ```
+
+That opens http://localhost:5173 after the backends are healthy. Stop with `stop.cmd` or `scripts/stop.ps1`.
+
+Full steps, ports, demo users, and a manual (multi-terminal) alternative: [docs/SETUP.md](docs/SETUP.md).
 
 ## Roles
 
