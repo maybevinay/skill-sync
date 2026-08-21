@@ -20,3 +20,6 @@ skillsync:
     issuer: skillsync
   gemini:
     api-key:
+eureka:
+  client:
+    enabled: false

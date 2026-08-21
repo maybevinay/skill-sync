@@ -16,6 +16,7 @@ public class Profile {
     private Long userId;
     @Column(name = "full_name", nullable = false)
     private String fullName;
+    @Column(name = "photo_url", columnDefinition = "TEXT")
     private String photoUrl;
     private String bio;
     private String learningGoals;

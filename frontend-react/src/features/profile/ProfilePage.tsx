@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Avatar } from "@/lib/ui";
+import { isLocalPhotoPath, readPhotoFile } from "@/lib/photo";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,8 @@ export function ProfilePage() {
     portfolioUrl: "",
   });
 
+  const photoInput = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (data) {
       setForm({
@@ -62,13 +65,38 @@ export function ProfilePage() {
   }, [data]);
 
   const save = useMutation({
-    mutationFn: async () => (await api.put("/api/profile/me", form)).data,
+    mutationFn: async () => {
+      if (isLocalPhotoPath(form.photoUrl)) {
+        throw new Error("local-photo");
+      }
+      return (await api.put("/api/profile/me", form)).data;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["profile"] });
       push("Profile saved", "success");
     },
-    onError: () => push("Could not save profile.", "danger"),
+    onError: (err: Error) => {
+      push(
+        err.message === "local-photo"
+          ? "Use Upload photo instead of a file path from your computer."
+          : "Could not save profile.",
+        "danger",
+      );
+    },
   });
+
+  async function onPickPhoto(file?: File) {
+    if (!file) return;
+    try {
+      const photoUrl = await readPhotoFile(file);
+      setForm((current) => ({ ...current, photoUrl }));
+      push("Photo ready. Save profile to keep it.", "success");
+    } catch (err) {
+      push(err instanceof Error ? err.message : "Could not read that image.", "danger");
+    } finally {
+      if (photoInput.current) photoInput.current.value = "";
+    }
+  }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -101,12 +129,30 @@ export function ProfilePage() {
 
       <section className="flex flex-wrap items-center gap-4">
         <Avatar name={form.fullName || user?.fullName} src={form.photoUrl || undefined} className="h-16 w-16 text-base" />
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="text-xl font-semibold">{form.fullName || user?.fullName}</h2>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <Badge tone="primary">{user?.role ?? "USER"}</Badge>
             {data?.mentor && <Badge tone="accent">Mentor</Badge>}
             <span className="text-sm text-muted">{user?.email}</span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <input
+              ref={photoInput}
+              id="photoFile"
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => void onPickPhoto(e.target.files?.[0])}
+            />
+            <Button type="button" variant="outline" size="sm" onClick={() => photoInput.current?.click()}>
+              Upload photo
+            </Button>
+            {form.photoUrl ? (
+              <Button type="button" variant="ghost" size="sm" onClick={() => setForm({ ...form, photoUrl: "" })}>
+                Remove photo
+              </Button>
+            ) : null}
           </div>
         </div>
       </section>
@@ -192,8 +238,8 @@ export function ProfilePage() {
         <section>
           <h3 className="mb-4 text-[17px] font-semibold">Links</h3>
           <div className="grid gap-4 md:grid-cols-2">
-            <Field id="photoUrl" label="Photo URL">
-              <Input id="photoUrl" value={form.photoUrl} onChange={(e) => setForm({ ...form, photoUrl: e.target.value })} />
+            <Field id="photoUrl" label="Photo URL" hint="Or paste an https image link. Local file paths will not display.">
+              <Input id="photoUrl" value={form.photoUrl.startsWith("data:image/") ? "" : form.photoUrl} placeholder="https://…" onChange={(e) => setForm({ ...form, photoUrl: e.target.value })} />
             </Field>
             {links.map((k) => (
               <Field key={k} id={k} label={labels[k]}>

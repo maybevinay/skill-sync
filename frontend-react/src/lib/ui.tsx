@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 
 export function initials(name?: string) {
@@ -38,8 +39,20 @@ export function formatDate(value?: string | null) {
 }
 
 export function Avatar({ name, src, className }: { name?: string; src?: string; className?: string }) {
-  if (src) {
-    return <img src={src} alt={name ? `${name} avatar` : "Avatar"} className={cn("h-10 w-10 shrink-0 rounded-full object-cover", className)} />;
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt=""
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+        className={cn("h-10 w-10 shrink-0 rounded-full object-cover", className)}
+      />
+    );
   }
   return (
     <div
@@ -47,6 +60,8 @@ export function Avatar({ name, src, className }: { name?: string; src?: string; 
         "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-lavender text-xs font-semibold text-primary",
         className,
       )}
+      aria-hidden={name ? undefined : true}
+      aria-label={name ? `${name} avatar` : undefined}
     >
       {initials(name)}
     </div>

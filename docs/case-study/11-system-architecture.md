@@ -21,7 +21,7 @@ SkillSync is a **modular monolith-adjacent microservice system**: four independe
 | matching-service | 8082 | Profiles, skills, matching, requests, reviews | Passwords |
 | ai-service | 8083 | Chat memory, RAG documents/chunks, usage | Matching scores |
 
-A second module `backend/gateway` exists as a related gateway implementation; **local setup runs `backend/api-gateway`**.
+A second module `backend/gateway` exists as a related gateway implementation; **local setup runs `backend/api-gateway`**. Auth, matching, AI, and the gateway register with **Eureka** on port 8761. The gateway routes with `lb://auth-service`, `lb://matching-service`, and `lb://ai-service`.
 
 ## Cross-cutting
 

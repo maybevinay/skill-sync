@@ -1,0 +1,1 @@
+ALTER TABLE profiles ALTER COLUMN photo_url TYPE TEXT;

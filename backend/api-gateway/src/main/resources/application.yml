@@ -21,15 +21,15 @@ spring:
             allowCredentials: true
       routes:
         - id: auth
-          uri: http://localhost:8081
+          uri: lb://auth-service
           predicates:
             - Path=/api/auth/**,/api/users/**,/api/admin/users,/api/admin/users/**,/api/admin/stats,/api/admin/audit-logs
         - id: matching
-          uri: http://localhost:8082
+          uri: lb://matching-service
           predicates:
             - Path=/api/profile/**,/api/skills/**,/api/mentors/**,/api/requests,/api/requests/**,/api/reviews,/api/reviews/**,/api/admin/analytics
         - id: ai
-          uri: http://localhost:8083
+          uri: lb://ai-service
           predicates:
             - Path=/api/chat,/api/chat/**,/api/rag/**,/api/documents/**,/api/admin/ai-stats
 skillsync:
@@ -38,3 +38,10 @@ skillsync:
     issuer: ${JWT_ISSUER:skillsync}
   rate-limit:
     requests-per-minute: 120
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true

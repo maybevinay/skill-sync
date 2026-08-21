@@ -1,6 +1,7 @@
 package com.skillsync.ai.config;
 
 import com.skillsync.ai.security.JwtAuthFilter;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,6 +40,9 @@ public class SecurityConfig {
                         .authenticationEntryPoint((req, res, e) -> writeAuthError(res, 401,
                                 "Missing JWT. Login on auth-service (8081), then Authorize in Swagger with accessToken."))
                         .accessDeniedHandler((req, res, e) -> {
+                            if (res.isCommitted()) {
+                                return;
+                            }
                             Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
                             if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
                                 writeAuthError(res, 401,
@@ -48,6 +52,7 @@ public class SecurityConfig {
                             }
                         }))
                 .authorizeHttpRequests(a -> a
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/actuator/**",

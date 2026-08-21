@@ -21,3 +21,6 @@ skillsync:
   mail:
     from: noreply@skillsync.local
     frontend-url: http://localhost:5173
+eureka:
+  client:
+    enabled: false

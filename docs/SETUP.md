@@ -42,11 +42,11 @@ The script:
 2. Checks Java, Maven, Node, npm, and Postgres port 5432
 3. Creates the three databases when `psql` is available
 4. Runs `npm install` in `frontend-react` when `node_modules` is missing
-5. Opens one PowerShell window each for auth, matching, AI, gateway, and the Vite frontend
-6. Waits until `/actuator/health` is `UP` on 8080–8083
+5. Opens one PowerShell window each for Eureka, auth, matching, AI, gateway, and the Vite frontend
+6. Waits until Eureka is up, then `/actuator/health` is `UP` on 8080–8083
 7. Opens http://localhost:5173
 
-Stop listeners on 5173 and 8080–8083:
+Stop listeners on 5173, 8080–8083, and Eureka 8761:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/stop.ps1
@@ -61,12 +61,14 @@ Optional flags for `scripts/start.ps1`:
 | `-SkipFrontend` | Backends only |
 | `-SkipInstall` | Do not run `npm install` |
 | `-NoBrowser` | Do not open the app in a browser |
+| `-Restart` | Run `stop.ps1` first, then start a clean stack |
 
 The first Maven start can take several minutes. Leave the service windows open while you use the app.
 
 | Service | Port | Database |
 | --- | --- | --- |
 | Frontend (Vite) | 5173 | — |
+| Eureka | 8761 | — |
 | API Gateway | 8080 | — |
 | Auth | 8081 | skillsync_auth |
 | Matching | 8082 | skillsync_matching |
@@ -80,9 +82,10 @@ Flyway runs on backend startup. Seed users:
 
 ## 3. Start services yourself (optional)
 
-Use this only if you are not using `start.cmd`. Four backend terminals:
+Use this only if you are not using `start.cmd`. Start Eureka first, then the four backends:
 
 ```bash
+cd backend/eureka-server && mvn spring-boot:run
 cd backend/auth-service && mvn spring-boot:run
 cd backend/matching-service && mvn spring-boot:run
 cd backend/ai-service && mvn spring-boot:run
@@ -138,6 +141,7 @@ node scripts/qa-api.mjs
 ## 6. API docs
 
 - App: http://localhost:5173
+- Eureka dashboard: http://localhost:8761
 - Gateway health: http://localhost:8080/actuator/health
 - Auth Swagger: http://localhost:8081/swagger-ui.html
 - Matching Swagger: http://localhost:8082/swagger-ui.html

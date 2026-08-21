@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { matchingApi } from "@/services/matching.service";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/shared/PageHeader";
@@ -8,11 +10,12 @@ import { Avatar } from "@/lib/ui";
 export function SettingsPage() {
   const { user } = useAuth();
   const { theme, toggle } = useTheme();
+  const profile = useQuery({ queryKey: ["profile"], queryFn: matchingApi.profile, retry: false });
   return (
     <div className="max-w-xl space-y-8">
       <PageHeader title="Settings" subtitle="Account, role, and appearance." />
       <section className="flex items-center gap-4">
-        <Avatar name={user?.fullName} className="h-14 w-14 text-sm" />
+        <Avatar name={user?.fullName} src={profile.data?.photoUrl} className="h-14 w-14 text-sm" />
         <div>
           <div className="font-semibold">{user?.fullName}</div>
           <div className="text-sm text-muted">{user?.email}</div>

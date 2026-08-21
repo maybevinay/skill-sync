@@ -62,6 +62,7 @@ export function AppShell() {
   const meta = titles[location.pathname];
 
   const requests = useQuery({ queryKey: ["requests"], queryFn: matchingApi.requests, retry: false });
+  const profile = useQuery({ queryKey: ["profile"], queryFn: matchingApi.profile, retry: false });
   const pending = (requests.data ?? []).filter((r: { status: string }) => r.status === "PENDING").length;
 
   useEffect(() => {
@@ -136,7 +137,7 @@ export function AppShell() {
         {nav}
         <div className="rounded-ss border border-line bg-surface-2/70 p-3">
           <div className="flex items-center gap-3">
-            <Avatar name={user?.fullName} className="h-10 w-10 text-xs" />
+            <Avatar name={user?.fullName} src={profile.data?.photoUrl} className="h-10 w-10 text-xs" />
             <div className="min-w-0">
               <div className="truncate text-sm font-medium text-foreground">{user?.fullName}</div>
               <div className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-2">{user?.role}</div>
@@ -199,7 +200,7 @@ export function AppShell() {
                   className="flex items-center gap-2 rounded-xl px-1.5 py-1 hover:bg-lavender"
                   aria-label="Account menu"
                 >
-                  <Avatar name={user?.fullName} className="h-9 w-9 text-xs" />
+                  <Avatar name={user?.fullName} src={profile.data?.photoUrl} className="h-9 w-9 text-xs" />
                   <div className="hidden text-left sm:block">
                     <div className="max-w-[9rem] truncate text-sm font-medium">{user?.fullName}</div>
                     <div className="text-[11px] font-medium uppercase tracking-wide text-muted-2">{user?.role}</div>

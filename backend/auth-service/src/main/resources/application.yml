@@ -56,6 +56,13 @@ skillsync:
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:8080}
 
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
 logging:
   level:
     com.skillsync.auth: INFO

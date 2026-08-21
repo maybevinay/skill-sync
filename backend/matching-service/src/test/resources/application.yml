@@ -13,3 +13,6 @@ skillsync:
   jwt:
     secret: change-me-to-a-256-bit-secret-key-for-hs256-skillsync
     issuer: skillsync
+eureka:
+  client:
+    enabled: false

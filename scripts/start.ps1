@@ -1,13 +1,15 @@
 # SkillSync one-command local run.
 # Usage (from repo root or anywhere):
 #   powershell -ExecutionPolicy Bypass -File scripts/start.ps1
+#   powershell -ExecutionPolicy Bypass -File scripts/start.ps1 -Restart
 # Or double-click start.cmd in the repo root.
 
 [CmdletBinding()]
 param(
     [switch] $SkipFrontend,
     [switch] $SkipInstall,
-    [switch] $NoBrowser
+    [switch] $NoBrowser,
+    [switch] $Restart
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,28 +37,9 @@ function Test-PortOpen([int] $Port) {
     }
 }
 
-function Test-PortListening([int] $Port) {
-    try {
-        return [bool] (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)
-    } catch {
-        return (Test-PortOpen $Port)
-    }
-}
-
-function Import-DotEnv([string] $Path) {
-    if (-not (Test-Path $Path)) { return }
-    Get-Content -Path $Path | ForEach-Object {
-        $line = $_.Trim()
-        if (-not $line -or $line.StartsWith("#")) { return }
-        $eq = $line.IndexOf("=")
-        if ($eq -lt 1) { return }
-        $name = $line.Substring(0, $eq).Trim()
-        $value = $line.Substring($eq + 1).Trim()
-        if ($value.StartsWith('"') -and $value.EndsWith('"')) {
-            $value = $value.Substring(1, $value.Length - 2)
-        }
-        [Environment]::SetEnvironmentVariable($name, $value, "Process")
-    }
+function Import-DotEnv {
+    $loader = Join-Path $PSScriptRoot "env.ps1"
+    if (Test-Path $loader) { . $loader }
 }
 
 function Wait-Health([string] $Url, [string] $Name, [int] $Seconds = 180) {
@@ -75,20 +58,47 @@ function Wait-Health([string] $Url, [string] $Name, [int] $Seconds = 180) {
     return $false
 }
 
+function Wait-EurekaApps([string[]] $Names, [int] $Seconds = 90) {
+    $deadline = (Get-Date).AddSeconds($Seconds)
+    $wanted = @($Names | ForEach-Object { $_.ToUpperInvariant() })
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $apps = Invoke-RestMethod -Uri "http://localhost:8761/eureka/apps" -Headers @{ Accept = "application/json" } -TimeoutSec 4
+            $found = @()
+            $list = $apps.applications.application
+            if ($null -ne $list) {
+                if ($list -isnot [System.Array]) { $list = @($list) }
+                foreach ($a in $list) { $found += ([string] $a.name).ToUpperInvariant() }
+            }
+            $missing = @($wanted | Where-Object { $found -notcontains $_ })
+            if ($missing.Count -eq 0) {
+                Write-Host "    Eureka registered $($Names -join ', ')" -ForegroundColor Green
+                return $true
+            }
+        } catch { }
+        Start-Sleep -Seconds 3
+    }
+    Write-Host "    Eureka is missing some services. Gateway lb:// routes may fail until they register." -ForegroundColor Yellow
+    return $false
+}
+
 function Start-ServiceWindow([string] $Title, [string] $WorkingDir, [string] $Command) {
     $escapedDir = $WorkingDir.Replace("'", "''")
-    $script = @"
-Set-Location '$escapedDir'
-`$Host.UI.RawUI.WindowTitle = '$Title'
-Write-Host '$Title' -ForegroundColor Cyan
-$Command
-"@
+    $escapedTitle = $Title.Replace("'", "''")
+    $envLoader = (Join-Path $PSScriptRoot "env.ps1").Replace("'", "''")
+    $script = ". '$envLoader'; Set-Location '$escapedDir'; `$Host.UI.RawUI.WindowTitle = '$escapedTitle'; Write-Host '$escapedTitle' -ForegroundColor Cyan; $Command"
     Start-Process -FilePath "powershell.exe" -WorkingDirectory $WorkingDir -ArgumentList @(
         "-NoExit",
         "-NoProfile",
         "-ExecutionPolicy", "Bypass",
         "-Command", $script
     ) | Out-Null
+}
+
+if ($Restart) {
+    Write-Step "Stopping existing SkillSync listeners"
+    & (Join-Path $PSScriptRoot "stop.ps1")
+    Start-Sleep -Seconds 2
 }
 
 Write-Host "SkillSync local startup" -ForegroundColor Magenta
@@ -98,7 +108,7 @@ if (-not (Test-Path (Join-Path $Root ".env")) -and (Test-Path (Join-Path $Root "
     Copy-Item (Join-Path $Root ".env.example") (Join-Path $Root ".env")
     Write-Host "Created .env from .env.example. Add API keys there if you use AI/RAG." -ForegroundColor Yellow
 }
-Import-DotEnv (Join-Path $Root ".env")
+Import-DotEnv
 
 Write-Step "Checking prerequisites"
 foreach ($tool in @("java", "mvn", "node", "npm")) {
@@ -107,6 +117,13 @@ foreach ($tool in @("java", "mvn", "node", "npm")) {
     }
 }
 Write-Host "    java, mvn, node, npm found"
+
+$javaOut = cmd /c "java -version 2>&1"
+if ("$javaOut" -notmatch 'version "21') {
+    Write-Host "    JDK 21 is required. Check: java -version" -ForegroundColor Yellow
+} else {
+    Write-Host "    Java 21 detected"
+}
 
 if (-not (Test-PortOpen 5432)) {
     throw "PostgreSQL is not listening on localhost:5432. Start PostgreSQL first."
@@ -143,45 +160,58 @@ if (-not $SkipFrontend -and -not $SkipInstall -and -not (Test-Path (Join-Path $f
     Pop-Location
 }
 
+$mvnRun = "mvn spring-boot:run"
 $services = @(
-    @{ Name = "auth-service";     Port = 8081; Dir = "backend\auth-service";     Health = "http://localhost:8081/actuator/health"; Cmd = "mvn spring-boot:run" }
-    @{ Name = "matching-service"; Port = 8082; Dir = "backend\matching-service"; Health = "http://localhost:8082/actuator/health"; Cmd = "mvn spring-boot:run" }
-    @{ Name = "ai-service";       Port = 8083; Dir = "backend\ai-service";       Health = "http://localhost:8083/actuator/health"; Cmd = "mvn spring-boot:run" }
-    @{ Name = "api-gateway";      Port = 8080; Dir = "backend\api-gateway";      Health = "http://localhost:8080/actuator/health"; Cmd = "mvn spring-boot:run" }
+    @{ Name = "eureka-server";    Port = 8761; Dir = "backend\eureka-server";    Health = "http://localhost:8761/actuator/health"; Cmd = $mvnRun }
+    @{ Name = "auth-service";     Port = 8081; Dir = "backend\auth-service";     Health = "http://localhost:8081/actuator/health"; Cmd = $mvnRun }
+    @{ Name = "matching-service"; Port = 8082; Dir = "backend\matching-service"; Health = "http://localhost:8082/actuator/health"; Cmd = $mvnRun }
+    @{ Name = "ai-service";       Port = 8083; Dir = "backend\ai-service";       Health = "http://localhost:8083/actuator/health"; Cmd = $mvnRun }
+    @{ Name = "api-gateway";      Port = 8080; Dir = "backend\api-gateway";      Health = "http://localhost:8080/actuator/health"; Cmd = $mvnRun }
 )
 
-Write-Step "Starting backend services (each in its own window)"
-foreach ($svc in $services) {
-    if (Test-PortListening $svc.Port) {
-        Write-Host "    $($svc.Name) already listening on $($svc.Port) — skipping" -ForegroundColor Yellow
-        continue
+function Start-TrackedService($svc) {
+    if (Test-PortOpen $svc.Port) {
+        Write-Host "    $($svc.Name) already listening on $($svc.Port) - skipping launch" -ForegroundColor Yellow
+    } else {
+        $dir = Join-Path $Root $svc.Dir
+        Start-ServiceWindow "SkillSync $($svc.Name)" $dir $svc.Cmd
+        Write-Host "    launched $($svc.Name)"
     }
-    $dir = Join-Path $Root $svc.Dir
-    Start-ServiceWindow "SkillSync $($svc.Name)" $dir $svc.Cmd
-    Write-Host "    launched $($svc.Name)"
+    return (Wait-Health $svc.Health $svc.Name 180)
 }
 
-Write-Step "Waiting for backends to become healthy (first Maven run can take a few minutes)"
+Write-Step "Starting Eureka, then backends, then gateway"
 $allUp = $true
-foreach ($svc in $services) {
+if (-not (Start-TrackedService $services[0])) { $allUp = $false }
+foreach ($svc in $services[1..3]) {
+    if (Test-PortOpen $svc.Port) {
+        Write-Host "    $($svc.Name) already listening on $($svc.Port) - skipping launch" -ForegroundColor Yellow
+    } else {
+        Start-ServiceWindow "SkillSync $($svc.Name)" (Join-Path $Root $svc.Dir) $svc.Cmd
+        Write-Host "    launched $($svc.Name)"
+    }
+}
+foreach ($svc in $services[1..3]) {
     if (-not (Wait-Health $svc.Health $svc.Name 180)) { $allUp = $false }
 }
+[void] (Wait-EurekaApps @("AUTH-SERVICE", "MATCHING-SERVICE", "AI-SERVICE") 90)
+if (-not (Start-TrackedService $services[4])) { $allUp = $false }
 if (-not $allUp) {
     Write-Host "One or more backends are not healthy. Check the service windows for errors." -ForegroundColor Yellow
 }
 
 if (-not $SkipFrontend) {
     Write-Step "Starting frontend"
-    if (Test-PortListening 5173) {
-        Write-Host "    Vite already listening on 5173 — skipping" -ForegroundColor Yellow
+    if (Test-PortOpen 5173) {
+        Write-Host "    Vite already listening on 5173 - skipping" -ForegroundColor Yellow
     } else {
         Start-ServiceWindow "SkillSync frontend" $frontendDir "npm run dev"
         Write-Host "    launched frontend"
         $deadline = (Get-Date).AddSeconds(60)
-        while ((Get-Date) -lt $deadline -and -not (Test-PortListening 5173)) {
+        while ((Get-Date) -lt $deadline -and -not (Test-PortOpen 5173)) {
             Start-Sleep -Seconds 2
         }
-        if (Test-PortListening 5173) {
+        if (Test-PortOpen 5173) {
             Write-Host "    frontend is up on http://localhost:5173" -ForegroundColor Green
         } else {
             Write-Host "    frontend did not bind 5173 yet. Check the frontend window." -ForegroundColor Yellow
@@ -192,17 +222,19 @@ if (-not $SkipFrontend) {
 Write-Host ""
 Write-Host "SkillSync URLs" -ForegroundColor Magenta
 Write-Host "  App:      http://localhost:5173"
+Write-Host "  Eureka:   http://localhost:8761"
 Write-Host "  Gateway:  http://localhost:8080/actuator/health"
 Write-Host "  Auth:     http://localhost:8081/swagger-ui.html"
 Write-Host "  Matching: http://localhost:8082/swagger-ui.html"
 Write-Host "  AI:       http://localhost:8083/swagger-ui.html"
 Write-Host ""
 Write-Host "Demo logins (see docs/SETUP.md)"
-Write-Host "  user@skillsync.dev"
-Write-Host "  mentor@skillsync.dev"
-Write-Host "  admin@skillsync.dev"
+Write-Host "  user@skillsync.dev / User@12345"
+Write-Host "  mentor@skillsync.dev / Mentor@12345"
+Write-Host "  admin@skillsync.dev / Admin@12345"
 Write-Host ""
-Write-Host "Stop everything:  powershell -ExecutionPolicy Bypass -File scripts\stop.ps1"
+Write-Host "Stop:     powershell -ExecutionPolicy Bypass -File scripts\stop.ps1"
+Write-Host "Restart:  powershell -ExecutionPolicy Bypass -File scripts\start.ps1 -Restart"
 
 if (-not $NoBrowser -and -not $SkipFrontend) {
     Start-Process "http://localhost:5173"

@@ -14,6 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -51,7 +53,9 @@ public class ChatController {
     @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@AuthenticationPrincipal AuthPrincipal user, @Valid @RequestBody ChatRequest request) {
         SseEmitter emitter = new SseEmitter(120_000L);
+        SecurityContext context = SecurityContextHolder.getContext();
         Thread.startVirtualThread(() -> {
+            SecurityContextHolder.setContext(context);
             try {
                 String full = String.valueOf(chatService.chat(
                         user.userId(), request.sessionId(), request.message(), false).get("content"));
@@ -61,15 +65,18 @@ public class ChatController {
                 }
                 emitter.complete();
             } catch (Exception ex) {
+                log.warn("Chat stream failed: {}", ex.getMessage());
                 String msg = ex.getMessage() == null || ex.getMessage().isBlank()
                         ? "The assistant is unavailable right now. Please try again."
                         : ex.getMessage();
                 try {
                     emitter.send(SseEmitter.event().data(msg));
-                    emitter.complete();
                 } catch (Exception ignored) {
-                    emitter.completeWithError(ex);
+                    // client already gone
                 }
+                emitter.complete();
+            } finally {
+                SecurityContextHolder.clearContext();
             }
         });
         return emitter;

@@ -10,12 +10,13 @@ Enterprise-grade SaaS monorepo: React 19 frontend, Spring Boot 3 microservices (
 
 ```
 skillsync/
-  start.cmd           Double-click to run auth, matching, AI, gateway, UI
-  stop.cmd            Stop listeners on 5173 and 8080–8083
+  start.cmd           Double-click to run Eureka, auth, matching, AI, gateway, UI
+  stop.cmd            Stop listeners on 5173, 8080–8083, and Eureka 8761
   scripts/            start.ps1, stop.ps1, qa-api.mjs
   frontend-react/     Vite + React 19 + TypeScript + Tailwind + ShadCN
   backend/
-    api-gateway/      Spring Cloud Gateway · JWT · CORS · rate limit
+    api-gateway/      Spring Cloud Gateway · JWT · CORS · rate limit · Eureka
+    eureka-server/    Netflix Eureka service registry :8761
     auth-service/     Registration, JWT, roles, users
     matching-service/ Profiles, skills, matching engine, requests, reviews
     ai-service/       Chat, memory, RAG, embeddings in PostgreSQL

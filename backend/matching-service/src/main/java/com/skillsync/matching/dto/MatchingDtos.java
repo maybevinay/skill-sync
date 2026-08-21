@@ -17,7 +17,7 @@ public class MatchingDtos {
     public record ProfileSkillView(Long skillId, String name, String category, SkillLevel level, int progress) {}
     public record ProfileRequest(
             @NotBlank @Size(max = 120) String fullName,
-            String photoUrl,
+            @Size(max = 250000) String photoUrl,
             String bio,
             String learningGoals,
             @Min(0) @Max(80) int experienceYears,

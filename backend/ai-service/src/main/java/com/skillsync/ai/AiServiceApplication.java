@@ -3,12 +3,12 @@ package com.skillsync.ai;
 import org.springframework.ai.autoconfigure.openai.OpenAiAutoConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-
+import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import com.skillsync.ai.config.GeminiProperties;
 import com.skillsync.ai.config.RagProperties;
 
-@SpringBootApplication(exclude = OpenAiAutoConfiguration.class)
+@SpringBootApplication(exclude = {OpenAiAutoConfiguration.class, UserDetailsServiceAutoConfiguration.class})
 @EnableConfigurationProperties({RagProperties.class, GeminiProperties.class})
 public class AiServiceApplication {
     public static void main(String[] args) {
