@@ -2,6 +2,10 @@ import axios, { type InternalAxiosRequestConfig } from "axios";
 import { authStore } from "@/lib/auth";
 
 export function serviceBase(path: string): string {
+  const gateway = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  if (import.meta.env.PROD && gateway) {
+    return gateway.replace(/\/$/, "");
+  }
   if (path.includes("/api/chat") || path.includes("/api/rag") || path.includes("/api/documents") || path.includes("/api/admin/ai-stats")) {
     return "http://localhost:8083";
   }

@@ -1,5 +1,5 @@
 server:
-  port: 8083
+  port: ${PORT:8083}
 spring:
   application:
     name: ai-service
@@ -8,7 +8,7 @@ spring:
       max-file-size: 15MB
       max-request-size: 15MB
   datasource:
-    url: ${DB_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/skillsync_ai}
+    url: ${DB_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/skillsync_ai${DB_PARAMS:}}
     username: ${DB_USERNAME:${POSTGRES_USER:root}}
     password: ${DB_PASSWORD:${POSTGRES_PASSWORD:Amit@8707}}
   jpa:
@@ -57,6 +57,7 @@ skillsync:
 
 eureka:
   client:
+    enabled: ${EUREKA_CLIENT_ENABLED:true}
     service-url:
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
   instance:

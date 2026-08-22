@@ -1,0 +1,9 @@
+.git
+.cursor
+**/.idea
+**/target
+**/node_modules
+frontend-react
+docs
+*.md
+**/src/test

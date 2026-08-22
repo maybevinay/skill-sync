@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
 spring:
   application:
     name: api-gateway
@@ -8,8 +8,10 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins:
-              - "http://localhost:5173"
+            allowedOriginPatterns:
+              - "http://localhost:*"
+              - "http://127.0.0.1:*"
+              - "https://*.onrender.com"
             allowedMethods:
               - GET
               - POST
@@ -21,15 +23,15 @@ spring:
             allowCredentials: true
       routes:
         - id: auth
-          uri: lb://auth-service
+          uri: ${AUTH_SERVICE_URI:lb://auth-service}
           predicates:
             - Path=/api/auth/**,/api/users/**,/api/admin/users,/api/admin/users/**,/api/admin/stats,/api/admin/audit-logs
         - id: matching
-          uri: lb://matching-service
+          uri: ${MATCHING_SERVICE_URI:lb://matching-service}
           predicates:
             - Path=/api/profile/**,/api/skills/**,/api/mentors/**,/api/requests,/api/requests/**,/api/reviews,/api/reviews/**,/api/admin/analytics
         - id: ai
-          uri: lb://ai-service
+          uri: ${AI_SERVICE_URI:lb://ai-service}
           predicates:
             - Path=/api/chat,/api/chat/**,/api/rag/**,/api/documents/**,/api/admin/ai-stats
 skillsync:
@@ -39,8 +41,15 @@ skillsync:
   rate-limit:
     requests-per-minute: 120
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
 eureka:
   client:
+    enabled: ${EUREKA_CLIENT_ENABLED:true}
     service-url:
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
   instance:
