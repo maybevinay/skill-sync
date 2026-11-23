@@ -1,0 +1,25 @@
+spring:
+  profiles:
+    active: test
+  datasource:
+    url: jdbc:h2:mem:skillsync_ai;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: true
+  ai:
+    openai:
+      api-key:
+skillsync:
+  jwt:
+    secret: change-me-to-a-256-bit-secret-key-for-hs256-skillsync
+    issuer: skillsync
+  gemini:
+    api-key:
+eureka:
+  client:
+    enabled: false

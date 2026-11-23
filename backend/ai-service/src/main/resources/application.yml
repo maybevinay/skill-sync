@@ -1,0 +1,73 @@
+server:
+  port: ${PORT:8083}
+spring:
+  application:
+    name: ai-service
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/skillsync_ai${DB_PARAMS:}}
+    username: ${DB_USERNAME:${POSTGRES_USER:root}}
+    password: ${DB_PASSWORD:${POSTGRES_PASSWORD:Amit@8707}}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        type:
+          preferred_instant_jdbc_type: TIMESTAMP
+  flyway:
+    enabled: true
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY:eLf4KelINn2YIlzownfWaa38O0YhVBUq2DGTGLV8}
+      base-url: ${OPENAI_BASE_URL:https://openai.generative-eu.engine.capgemini.com/v1}
+      chat:
+        options:
+          model: ${OPENAI_MODEL:openai.gpt-5-mini}
+        # Spring AI appends /v1 by default; Capgemini base-url already includes /v1.
+        completions-path: /chat/completions
+      embedding:
+        options:
+          model: ${OPENAI_EMBEDDING_MODEL:amazon.titan-embed-text-v1}
+        embeddings-path: /embeddings
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+skillsync:
+  jwt:
+    secret: ${JWT_SECRET:change-me-to-a-256-bit-secret-key-for-hs256-skillsync}
+    issuer: ${JWT_ISSUER:skillsync}
+  rag:
+    embedding-dimensions: 1536
+    chunk-size: 800
+    chunk-overlap: 120
+    top-k: 5
+    min-similarity: 0.28
+    max-chunks-per-document: 200
+    max-query-chars: 4000
+    max-history-messages: 12
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemini-3.6-flash}
+    embedding-model: ${GEMINI_EMBEDDING_MODEL:gemini-embedding-001}
+
+eureka:
+  client:
+    enabled: ${EUREKA_CLIENT_ENABLED:true}
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: "!test"
+    import:
+      - optional:dotenv:.env
+      - optional:dotenv:../../.env

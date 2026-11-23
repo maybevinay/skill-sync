@@ -1,0 +1,5 @@
+# SkillSync uses a local PostgreSQL instance (not Docker).
+# Create databases skillsync_auth, skillsync_matching, and skillsync_ai
+# for user root. See database/init/01-create-databases.sql.
+
+services: {}

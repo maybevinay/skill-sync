@@ -1,0 +1,57 @@
+server:
+  port: ${GATEWAY_PORT:8080}
+
+spring:
+  application:
+    name: skillsync-gateway
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  cloud:
+    gateway:
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: ${CORS_ORIGINS:http://localhost:4200}
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+      routes:
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URI:http://localhost:8081}
+          predicates:
+            - Path=/api/auth/**,/api/users/**,/api/admin/**
+        - id: matching-service
+          uri: ${MATCHING_SERVICE_URI:http://localhost:8082}
+          predicates:
+            - Path=/api/profiles/**,/api/skills/**,/api/mentors/**,/api/matching/**,/api/requests/**,/api/sessions/**,/api/reviews/**,/api/badges/**,/api/analytics/**
+        - id: ai-service
+          uri: ${AI_SERVICE_URI:http://localhost:8083}
+          predicates:
+            - Path=/api/ai/**
+
+jwt:
+  secret: ${JWT_SECRET:SkillSyncEnterpriseJwtSecretKeyThatIsAtLeastSixtyFourCharactersLong!!}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  level:
+    com.skillsync: INFO
+    org.springframework.cloud.gateway: INFO

@@ -1,0 +1,156 @@
+# SkillSync on Render: Postgres + 4 Spring Boot services + static React UI.
+# Apply from: https://dashboard.render.com/blueprint/new?repo=https://github.com/Amitag87/SkillSync-Peer-Learning-and-Mentorship-Program
+previews:
+  generation: manual
+
+databases:
+  - name: skillsync-db
+    databaseName: skillsync
+    plan: free
+
+envVarGroups:
+  - name: skillsync-shared
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ISSUER
+        value: skillsync
+      - key: EUREKA_CLIENT_ENABLED
+        value: "false"
+      - key: DB_PARAMS
+        value: "?sslmode=require"
+      - key: PGSSLMODE
+        value: require
+
+services:
+  - type: web
+    name: skillsync-auth
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/auth-service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    preDeployCommand: /app/render-create-databases.sh
+    envVars:
+      - fromGroup: skillsync-shared
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: skillsync-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: skillsync-db
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: skillsync-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: skillsync-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: skillsync-db
+          property: password
+      - key: FRONTEND_URL
+        fromService:
+          name: skillsync-web
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: skillsync-matching
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/matching-service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    preDeployCommand: /app/render-create-databases.sh
+    envVars:
+      - fromGroup: skillsync-shared
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: skillsync-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: skillsync-db
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: skillsync-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: skillsync-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: skillsync-db
+          property: password
+
+  - type: web
+    name: skillsync-ai
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/ai-service/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    preDeployCommand: /app/render-create-databases.sh
+    envVars:
+      - fromGroup: skillsync-shared
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: skillsync-db
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: skillsync-db
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: skillsync-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: skillsync-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: skillsync-db
+          property: password
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+
+  - type: web
+    name: skillsync-gateway
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/api-gateway/Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    envVars:
+      - fromGroup: skillsync-shared
+      - key: AUTH_SERVICE_URI
+        value: http://skillsync-auth:10000
+      - key: MATCHING_SERVICE_URI
+        value: http://skillsync-matching:10000
+      - key: AI_SERVICE_URI
+        value: http://skillsync-ai:10000
+
+  - type: web
+    name: skillsync-web
+    runtime: static
+    buildCommand: npm ci --prefix frontend-react && npm run build --prefix frontend-react
+    staticPublishPath: frontend-react/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          name: skillsync-gateway
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
