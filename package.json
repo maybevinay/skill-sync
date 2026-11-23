@@ -1,0 +1,27 @@
+{
+  "name": "skillsync-mern",
+  "version": "1.0.0",
+  "description": "SkillSync - AI-Powered Peer Learning & Mentorship Platform (MERN Stack)",
+  "private": true,
+  "scripts": {
+    "server": "node server/src/index.js",
+    "client": "npm --prefix frontend-react dev",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm --prefix frontend-react run build",
+    "test": "npm --prefix frontend-react test",
+    "test:api": "node scripts/qa-api.mjs",
+    "start": "node server/src/index.js"
+  },
+  "keywords": [
+    "mern",
+    "mongodb",
+    "express",
+    "react",
+    "nodejs",
+    "mentorship",
+    "peer-learning",
+    "ai"
+  ],
+  "author": "SkillSync",
+  "license": "MIT"
+}
